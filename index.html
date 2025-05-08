@@ -14,7 +14,6 @@
         linear-gradient(rgba(255,230,240,0.7), rgba(255,230,240,0.7)),
         url('https://www.toptal.com/designers/subtlepatterns/uploads/party.png') repeat;
     }
-
     header {
       padding: 20px;
       background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
@@ -38,7 +37,6 @@
       justify-content: center;
       height: 60vh;
     }
-
     .balloon {
       width: 20vw;
       height: 30vw;
@@ -68,7 +66,6 @@
       transition: opacity 1s ease;
       background: #fff;
       padding: 20px;
-      border: 2px solid #4CAF50;
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
@@ -80,11 +77,11 @@
       color: white;
       border: none;
       border-radius: 5px;
-      margin-top: 10px;
-      filter: brightness(1);
       transition: filter 0.2s;
     }
-    #message button:hover { filter: brightness(1.1); }
+    #message button:hover {
+      filter: brightness(1.1);
+    }
 
     button#start {
       padding: 10px 20px;
@@ -98,9 +95,12 @@
       animation: pulse 2s infinite;
       transition: filter 0.2s;
     }
-    button#start:active { transform: scale(0.95); }
-    button#start:hover { filter: brightness(1.1); }
-
+    button#start:active {
+      transform: scale(0.95);
+    }
+    button#start:hover {
+      filter: brightness(1.1);
+    }
     @keyframes pulse {
       0%,100% { transform: scale(1); }
       50%     { transform: scale(1.05); }
@@ -108,11 +108,11 @@
 
     footer {
       padding: 20px;
-      background: linear-gradient(135deg, #c3e0e5, #a3d5d3);
+      background: transparent;
+      box-shadow: none;
       position: fixed;
       bottom: 0;
       width: 100%;
-      box-shadow: 0 -4px 8px rgba(0,0,0,0.1);
     }
 
     .confetti {
@@ -155,26 +155,29 @@
     </button>
   </div>
 
-  <footer>
-    <!-- left blank -->
-  </footer>
+  <footer></footer>
 
   <div class="confetti" id="confetti"></div>
-  <audio id="blowSound" src="https://www.soundjay.com/nature/sounds/wind-blowing-03.mp3" preload="auto" loop></audio>
-  <audio id="popSound"  src="https://www.soundjay.com/button/beep-07.wav"      preload="auto"></audio>
+  <audio id="blowSound"
+         src="https://www.soundjay.com/nature/sounds/wind-blowing-03.mp3"
+         preload="auto" loop></audio>
+  <audio id="popSound"
+         src="https://www.soundjay.com/button/beep-07.wav"
+         preload="auto"></audio>
 
   <script>
-    const startBtn   = document.getElementById('start');
-    const balloon    = document.querySelector('.balloon');
-    const msgBox     = document.getElementById('message');
-    const confetti   = document.getElementById('confetti');
-    const blowSound  = document.getElementById('blowSound');
-    const popSound   = document.getElementById('popSound');
+    const startBtn  = document.getElementById('start');
+    const balloon   = document.querySelector('.balloon');
+    const msgBox    = document.getElementById('message');
+    const confetti  = document.getElementById('confetti');
+    const blowSound = document.getElementById('blowSound');
+    const popSound  = document.getElementById('popSound');
 
     let scaleFactor = 1,
         MAX_SCALE   = 2,
-        INCREMENT   = 0.01,
-        THRESHOLD   = 0.02,
+        INCREMENT   = 0.002,
+        HOLD_FRAMES = 5,
+        holdCount   = 0,
         running     = false,
         micStream;
 
@@ -185,9 +188,18 @@
           micStream = stream;
           const audioCtx = new AudioContext();
           const source   = audioCtx.createMediaStreamSource(stream);
+
+          const filter = audioCtx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.value = 600;
+          filter.Q.value = 1;
+
           const analyser = audioCtx.createAnalyser();
           analyser.fftSize = 2048;
-          source.connect(analyser);
+
+          source.connect(filter);
+          filter.connect(analyser);
+
           running = true;
           processAudio(analyser);
         })
@@ -199,30 +211,43 @@
 
     function processAudio(analyser) {
       if (!running) return;
+
       const data = new Uint8Array(analyser.fftSize);
       analyser.getByteTimeDomainData(data);
+
       let sum = 0;
-      for (let v of data) sum += ((v - 128) / 128) ** 2;
+      for (let v of data) {
+        const norm = (v - 128) / 128;
+        sum += norm * norm;
+      }
       const rms = Math.sqrt(sum / data.length);
 
-      if (rms > THRESHOLD) {
-        blowSound.play();
-        scaleFactor = Math.min(MAX_SCALE, scaleFactor + INCREMENT);
-        balloon.style.transform = `scale(${scaleFactor})`;
-
-        if (scaleFactor >= MAX_SCALE) {
-          balloon.style.display = 'none';
-          blowSound.pause();
-          popSound.play();
-          createConfetti();
-          msgBox.style.display = 'block';
-          setTimeout(() => msgBox.style.opacity = '1', 10);
-          running = false;
-          micStream.getTracks().forEach(t => t.stop());
+      if (rms > 0.02) {
+        holdCount++;
+        if (holdCount >= HOLD_FRAMES) {
+          blowSound.play();
+          scaleFactor = Math.min(MAX_SCALE, scaleFactor + INCREMENT);
+          balloon.style.transform = `scale(${scaleFactor})`;
+          holdCount = 0;
         }
       } else {
+        // reset on any pause in blowing
         blowSound.pause();
         blowSound.currentTime = 0;
+        holdCount = 0;
+        scaleFactor = 1;
+        balloon.style.transform = 'scale(1)';
+      }
+
+      if (scaleFactor >= MAX_SCALE) {
+        balloon.style.display = 'none';
+        popSound.play();
+        createConfetti();
+        msgBox.style.display = 'block';
+        setTimeout(() => msgBox.style.opacity = '1', 10);
+        running = false;
+        micStream.getTracks().forEach(t => t.stop());
+        return;
       }
 
       requestAnimationFrame(() => processAudio(analyser));
@@ -239,7 +264,7 @@
       }
     }
 
-    // start confetti right away
+    // initial gentle confetti
     createConfetti();
   </script>
 </body>
