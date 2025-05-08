@@ -16,7 +16,7 @@
     }
     header {
       padding: 20px;
-      background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+      background: linear-gradient(135deg, #531671 0%, #af1ebf 100%);
       color: #fff;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
       animation: fadeIn 1s ease-out;
@@ -37,25 +37,60 @@
       justify-content: center;
       height: 60vh;
     }
+
+    .balloon-container {
+      position: relative;
+      width: 18vw;
+      height: 26vw;
+      margin-top: 1rem;
+    }
+
     .balloon {
-      width: 20vw;
-      height: 30vw;
-      background: radial-gradient(circle at top left, #ff7e5f, #feb47b);
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top left, #ff758c, #ff7eb9);
       border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      box-shadow:
+        inset -8px -8px 15px rgba(0,0,0,0.2),
+        inset 8px 8px 10px rgba(255,255,255,0.5),
+        0 8px 12px rgba(0,0,0,0.1);
       position: relative;
       transition: transform 0.1s ease;
+      overflow: hidden;
     }
+    /* glossy highlight */
+    .balloon::before {
+      content: '';
+      position: absolute;
+      top: 20%;
+      left: 25%;
+      width: 30%;
+      height: 30%;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      filter: blur(6px);
+    }
+    /* knot under balloon */
     .balloon::after {
       content: '';
       position: absolute;
-      bottom: -5vw;
+      bottom: -2.5vw;
       left: 50%;
       transform: translateX(-50%);
-      width: 0;
-      height: 0;
-      border-left: 2vw solid transparent;
-      border-right: 2vw solid transparent;
-      border-top: 5vw solid #feb47b;
+      width: 3vw;
+      height: 3vw;
+      background: #e07a5f;
+      border-radius: 0 0 2vw 2vw;
+    }
+    /* string */
+    .balloon-container .string {
+      position: absolute;
+      top: calc(100% - 1vw);
+      left: 50%;
+      width: 0.2vw;
+      height: 30vh;
+      background: radial-gradient(circle, #444, #222);
+      transform: translateX(-50%);
     }
 
     #message {
@@ -125,6 +160,18 @@
       z-index: 1000;
     }
     .confetti-piece {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  opacity: 0.9;
+  background-color: red; /* overwritten by JS */
+  border-radius: 2px;
+  transform: rotate(0deg);
+  animation: confetti-fall linear infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+    .confetti-piece {
       position: absolute;
       width: 10px;
       height: 10px;
@@ -143,17 +190,27 @@
   </header>
 
   <main>
-    <p>! 🥳هنا تبدأ الاحتفالية الحقيقية<br> انفخي البالون لين ينفجر... راح تحتاجي سماعات
-      <br> ⚠️لازم تفجريها بنفس واحد
-    </p>     
+    <h2>
+      🥳هنا تبدأ الاحتفالية الحقيقية
+    </h2>
+      <p>
+      انفخي البالون لين ينفجر... راح تحتاجي سماعات<br>
+      ⚠️ ولااازم تفجريها بنفس واحد
+    </p>
     <button id="start">يلا ننفخ</button>
-    <div class="balloon"></div>
+    <div class="balloon-container">
+      <div class="balloon"></div>
+      <div class="string"></div>
+    </div>
   </main>
 
   <div id="message">
-    <p>!انتهت مهمة البالون... بس هذي لسا البداية<br>!اضغطي وشوفي وين نحتفل</p>    
-     <button onclick="window.open('https://www.google.com/maps','_blank')">
-      🎉يلا بييينا عالهديه
+    <p>
+      انتهت مهمة البالون... بس هذي لسا البداية!<br>
+      اضغطي وشوفي وين نحتفل 🎉
+    </p>
+    <button onclick="window.open('https://www.google.com/maps','_blank')">
+      يلا بييينا عالهديه
     </button>
   </div>
 
@@ -233,7 +290,6 @@
           holdCount = 0;
         }
       } else {
-        // reset on any pause in blowing
         blowSound.pause();
         blowSound.currentTime = 0;
         holdCount = 0;
@@ -242,7 +298,7 @@
       }
 
       if (scaleFactor >= MAX_SCALE) {
-        balloon.style.display = 'none';
+        balloon.parentElement.style.opacity = 0;
         popSound.play();
         createConfetti();
         msgBox.style.display = 'block';
@@ -266,7 +322,6 @@
       }
     }
 
-    // initial gentle confetti
     createConfetti();
   </script>
 </body>
