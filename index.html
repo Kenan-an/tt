@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Graduation Celebration</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background:
+        linear-gradient(rgba(255,230,240,0.7), rgba(255,230,240,0.7)),
+        url('https://www.toptal.com/designers/subtlepatterns/uploads/party.png') repeat;
+    }
+
+    header {
+      padding: 20px;
+      background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+      color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      animation: fadeIn 1s ease-out;
+    }
+    header h1 {
+      margin: 0;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+    }
+
+    .balloon {
+      width: 20vw;
+      height: 30vw;
+      background: radial-gradient(circle at top left, #ff7e5f, #feb47b);
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      position: relative;
+      transition: transform 0.1s ease;
+    }
+    .balloon::after {
+      content: '';
+      position: absolute;
+      bottom: -5vw;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 2vw solid transparent;
+      border-right: 2vw solid transparent;
+      border-top: 5vw solid #feb47b;
+    }
+
+    #message {
+      display: none;
+      font-size: 24px;
+      margin-top: 20px;
+      opacity: 0;
+      transition: opacity 1s ease;
+      background: #fff;
+      padding: 20px;
+      border: 2px solid #4CAF50;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    #message button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #4CAF50, #81C784);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-top: 10px;
+      filter: brightness(1);
+      transition: filter 0.2s;
+    }
+    #message button:hover { filter: brightness(1.1); }
+
+    button#start {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background: linear-gradient(to right, #6a11cb, #2575fc);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      animation: pulse 2s infinite;
+      transition: filter 0.2s;
+    }
+    button#start:active { transform: scale(0.95); }
+    button#start:hover { filter: brightness(1.1); }
+
+    @keyframes pulse {
+      0%,100% { transform: scale(1); }
+      50%     { transform: scale(1.05); }
+    }
+
+    footer {
+      padding: 20px;
+      background: linear-gradient(135deg, #c3e0e5, #a3d5d3);
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      box-shadow: 0 -4px 8px rgba(0,0,0,0.1);
+    }
+
+    .confetti {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      opacity: 0.8;
+      animation: confetti-fall 5s linear infinite;
+    }
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0deg); }
+      100% { transform: translateY(100vh) rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎓 Congratulations, Graduate!</h1>
+  </header>
+
+  <main>
+    <p>Blow into your microphone to inflate the balloon!<br>Make sure to allow mic access.</p>
+    <button id="start">Start</button>
+    <div class="balloon"></div>
+  </main>
+
+  <div id="message">
+    <p>🎉 Congratulations on your graduation!</p>
+    <button onclick="window.open('https://www.google.com/maps','_blank')">
+      View Celebration Location
+    </button>
+  </div>
+
+  <footer>
+    <!-- left blank -->
+  </footer>
+
+  <div class="confetti" id="confetti"></div>
+  <audio id="blowSound" src="https://www.soundjay.com/nature/sounds/wind-blowing-03.mp3" preload="auto" loop></audio>
+  <audio id="popSound"  src="https://www.soundjay.com/button/beep-07.wav"      preload="auto"></audio>
+
+  <script>
+    const startBtn   = document.getElementById('start');
+    const balloon    = document.querySelector('.balloon');
+    const msgBox     = document.getElementById('message');
+    const confetti   = document.getElementById('confetti');
+    const blowSound  = document.getElementById('blowSound');
+    const popSound   = document.getElementById('popSound');
+
+    let scaleFactor = 1,
+        MAX_SCALE   = 2,
+        INCREMENT   = 0.01,
+        THRESHOLD   = 0.02,
+        running     = false,
+        micStream;
+
+    startBtn.addEventListener('click', () => {
+      startBtn.disabled = true;
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          micStream = stream;
+          const audioCtx = new AudioContext();
+          const source   = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 2048;
+          source.connect(analyser);
+          running = true;
+          processAudio(analyser);
+        })
+        .catch(err => {
+          alert('Microphone error: ' + err.message);
+          startBtn.disabled = false;
+        });
+    });
+
+    function processAudio(analyser) {
+      if (!running) return;
+      const data = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let v of data) sum += ((v - 128) / 128) ** 2;
+      const rms = Math.sqrt(sum / data.length);
+
+      if (rms > THRESHOLD) {
+        blowSound.play();
+        scaleFactor = Math.min(MAX_SCALE, scaleFactor + INCREMENT);
+        balloon.style.transform = `scale(${scaleFactor})`;
+
+        if (scaleFactor >= MAX_SCALE) {
+          balloon.style.display = 'none';
+          blowSound.pause();
+          popSound.play();
+          createConfetti();
+          msgBox.style.display = 'block';
+          setTimeout(() => msgBox.style.opacity = '1', 10);
+          running = false;
+          micStream.getTracks().forEach(t => t.stop());
+        }
+      } else {
+        blowSound.pause();
+        blowSound.currentTime = 0;
+      }
+
+      requestAnimationFrame(() => processAudio(analyser));
+    }
+
+    function createConfetti() {
+      for (let i = 0; i < 100; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = `${Math.random() * 100}vw`;
+        piece.style.backgroundColor = `hsl(${Math.random() * 360},100%,50%)`;
+        piece.style.animationDuration = `${Math.random() * 3 + 2}s`;
+        confetti.appendChild(piece);
+      }
+    }
+
+    // start confetti right away
+    createConfetti();
+  </script>
+</body>
+</html>
