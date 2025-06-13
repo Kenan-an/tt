@@ -546,7 +546,7 @@
         // Set a timer to start deflating if blowing stops
         breathDecayTimer = setTimeout(() => {
           startDeflating();
-        }, 500); // If no blow detected for 800ms, start deflating
+        }, 800); // If no blow detected for 800ms, start deflating
 
       } else {
         // Not blowing - check if we should show feedback
